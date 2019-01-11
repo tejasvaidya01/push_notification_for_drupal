@@ -1,0 +1,248 @@
+<?php
+if (!defined('PUSHASSIST_JS_URL')) {
+  define('PUSHASSIST_JS_URL', 'https://cdn.pushassist.com/account/assets/');
+}
+/**
+ * @file
+ * Short file description here.
+ *
+ * Long description here.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+
+
+function pushassist_menu() {
+
+  $items = array();
+
+  $items['admin/config/administration/pushassist/pushassist_menu'] = array(
+      'title' => 'Dashboard',
+      'page callback' => 'pushassist_validate_user',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/notification_details'] = array(
+      'title' => 'Sent Notifications',
+      'page callback' => 'pushassist_notification_details_view',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/new_notification'] = array(
+      'title' => 'Send Notification',
+      'page callback' => 'pushassist_show_send_notification_form',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/segment_details'] = array(
+      'title' => 'Segments',
+      'page callback' => 'pushassist_segment_details_view',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/create_segment'] = array(
+      'title' => 'Create Segments',
+      'page callback' => 'pushassist_show_create_segment_form',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/subscribers'] = array(
+      'title' => 'Subscribers',
+      'page callback' => 'pushassist_subscirbers_view',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/pushassist_settings'] = array(
+      'title' => 'PushAssist Settings',
+      'page callback' => 'pushassist_settings_view',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/pushassist_campaigns'] = array(
+      'title' => 'PushAssist Campaigns',
+      'page callback' => 'pushassist_campaigns_view',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  $items['admin/config/administration/pushassist/signout'] = array(
+      'page callback' => 'pushassist_account_signout',
+      'access callback' => 'user_access',
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_CALLBACK,
+      'file' => 'pushassist.admin.inc',
+  );
+
+  return $items;
+}
+
+function pushassist_help($path, $arg)
+{
+  switch ($path) {
+    case 'admin/help#pushassist':
+      // Return a line-break version of the README.
+      $readme = file_get_contents(drupal_get_path('module', 'pushassist') . '/README.txt');
+      return nl2br($readme);
+  }
+}
+
+function pushassist_init() {
+
+	$pushassist_jsPath = variable_get('pushassist_jsPath', '');
+
+    $switch_cdn = explode('assets/', $pushassist_jsPath);
+
+    $is_admin = path_is_admin(current_path());
+
+    if (!empty($pushassist_jsPath) && !$is_admin) {
+
+      drupal_add_js(trim(PUSHASSIST_JS_URL.$switch_cdn[1]), array(
+          'type' => 'external',
+          'async' => TRUE,
+      ));
+
+    }
+}
+
+
+/**
+ * Implements hook_form_alter().
+ */
+function pushassist_form_alter(&$form, &$form_state, $form_id) {
+
+  if (isset($form_state['node']) && (($form_state['node']->title === NULL) || ($form_state['node']->title !== NULL))) {
+	//&& $form_state['node']->status == 0
+    $pushassist_apiKey = variable_get('pushassist_apiKey', '');
+
+    $pushassist_secretKey = variable_get('pushassist_secretKey', '');
+
+    if ($pushassist_apiKey && $pushassist_secretKey && isset($form['type']['#value']) && in_array($form['type']['#value'], array('article', 'blog'))) {
+
+      $form['pushassist'] = array(
+          '#type' => 'fieldset',
+          '#title' => t('PushAssist'),
+          '#collapsible' => TRUE,
+          '#collapsed' => FALSE,
+      );
+
+      $form['pushassist']['pushassist_notification_message'] = array(
+          '#type' => 'textfield',
+          '#title' => t('PushAssist Notification Message'),
+          '#maxlength' => 73,
+      );
+
+      $form['pushassist']['pushassist_not_send'] = array(
+          '#type' => 'checkbox',
+          '#default_value' => FALSE,
+          '#title' => t('<strong>Do NOT</strong> send notification with <strong>PushAssist</strong>'),
+      );
+    }
+  }
+}
+
+
+function pushassist_node_insert($node) {
+
+  pushassist_build_note($node);
+
+}
+
+
+function pushassist_node_update($node) {
+
+  $pushassist_auto_push_update = variable_get('pushassist_auto_push_update', '');
+
+  if (($node->original->status == 0 && $node->status == 1) || $pushassist_auto_push_update == TRUE) {
+
+    pushassist_build_note($node);
+
+  }
+
+}
+
+function pushassist_build_note($node) {
+
+  $nid = $node->nid;
+
+  $status = $node->status;
+
+  $pushassist_auto_push_publish = variable_get('pushassist_auto_push_publish', '');
+  $pushassist_auto_push_update = variable_get('pushassist_auto_push_update', '');
+  $pushassist_auto_push_logo_img_post = variable_get('pushassist_auto_push_logo_img_post', '');
+  $pushassist_auto_push_UTMparameters = variable_get('pushassist_auto_push_UTMparameters', '');
+
+  $UTM_source = '';
+  $UTM_medium = '';
+  $UTM_campaign = '';
+  $pushassist_image_url = '';
+
+  $public = node_access('view', $node, drupal_anonymous_user());
+
+  if ($status == TRUE && $public == TRUE) {
+
+    $pushassist_apiKey = variable_get('pushassist_apiKey', '');
+
+    $pushassist_secretKey = variable_get('pushassist_secretKey', '');
+
+    if (($pushassist_apiKey && $pushassist_secretKey && (($node->type === 'article') || ($node->type === 'blog'))) || isset($_POST['pushassist_not_send']) || ($pushassist_auto_push_publish == TRUE || $pushassist_auto_push_update == TRUE)) {
+
+      $pushassist_url = url('node/' . $nid, array('absolute' => TRUE));
+
+      $pushassist_title = $node->title;
+
+      $pushassist_message = trim($node->pushassist_notification_message);
+
+      if(empty($pushassist_message)){
+
+        $pushassist_message = variable_get('pushassist_auto_push_message', '');
+      }
+
+      $node = node_load($nid);
+
+      if($pushassist_auto_push_logo_img_post == False) {
+
+        if (isset($node->field_image['und'][0]['uri'])) {
+
+          $pushassist_image_url = trim(file_create_url($node->field_image['und'][0]['uri']));
+
+        }
+      }
+
+      module_load_include('inc', 'pushassist', 'pushassist.api');
+
+      if($pushassist_auto_push_UTMparameters == TRUE){
+
+        $UTM_source = variable_get('pushassist_setting_utm_source', '');
+        $UTM_medium = variable_get('pushassist_setting_utm_medium', '');
+        $UTM_campaign = variable_get('pushassist_setting_utm_campaign', '');
+      }
+
+      pushassist_send_notification_new_post($pushassist_apiKey, $pushassist_secretKey, $pushassist_title, $pushassist_message, $pushassist_url, $pushassist_image_url, $UTM_source, $UTM_medium, $UTM_campaign);
+    }
+  }
+}

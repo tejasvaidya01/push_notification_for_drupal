@@ -1,0 +1,4 @@
+name = Push Notifications for Drupal
+description = Increase engagement & drive more repeat traffic to your Drupal site with desktop, mobile push notifications. Supporting Chrome, Firefox, Safari
+core = 7.x
+configure = admin/config/administration/pushassist/pushassist_menu

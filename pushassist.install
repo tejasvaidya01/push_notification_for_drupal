@@ -1,0 +1,40 @@
+<?php
+
+/**
+ * @file
+ * Install and uninstall code for Custom Module.
+ *
+ * Long description here.
+ */
+
+
+/**
+ * Implements hook_install().
+ */
+function pushassist_install() {
+
+  // Do some things on install, like setting the module weight.
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function pushassist_uninstall() {
+
+   variable_del('pushassist_apiKey');
+   variable_del('pushassist_secretKey');
+   variable_del('pushassist_jsPath');
+   variable_del('pushassist_remainSubscribers');
+   variable_del('pushassist_accountName');
+   variable_del('pushassist_imagePath');
+
+   variable_del('pushassist_auto_push_publish');
+   variable_del('pushassist_auto_push_update');
+
+   variable_del('pushassist_auto_push_UTMparameters');
+
+   variable_del('pushassist_setting_utm_source');
+   variable_del('pushassist_setting_utm_medium');
+   variable_del('pushassist_setting_utm_campaign');
+   variable_del('pushassist_auto_push_message');
+}
